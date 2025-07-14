@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
+from typing import List
 from models.conexao_model import Conexao
 from schemas.validacao_schema import ValidacaoCreate, ValidacaoResponse
 from service.validacao_service import (
     criar_validacao_com_versao,
     listar_validacoes_por_projeto,
     executar_validacao,
-    executar_validacao_somente_destino,
+    executar_validacoes_somente_destino
+  
 )
 
 router = APIRouter(prefix="/validacoes", tags=["Validações"])
@@ -44,13 +46,17 @@ def executar_validacao_endpoint(validacao_id: int, db: Session = Depends(get_db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/executar-destino/{validacao_id}")
-def executar_validacao_somente_endpoint(validacao_id: int, db: Session = Depends(get_db)):
+
+@router.get("/executar-destino")
+def executar_validacoes_somente_endpoint(
+    validacao_ids: List[int] = Query(..., description="IDs das validações a executar"),
+    db: Session = Depends(get_db)
+):
     """
-    Executa validação apenas no destino.
+    Executa validações apenas no destino para múltiplos IDs.
     """
     try:
-        resultado = executar_validacao_somente_destino(validacao_id, db)
+        resultado = executar_validacoes_somente_destino(validacao_ids, db)
         return resultado
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

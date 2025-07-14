@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from sqlalchemy import create_engine
 
+from typing import List
 from models.validacao_model import Validacao
 from models.versao_validacao_model import VersaoValidacao
 from models.conexao_model import Conexao
@@ -79,27 +80,42 @@ def executar_validacao(validacao_id: int, db: Session):
         }
 
 
-def executar_validacao_somente_destino(validacao_id: int, db: Session):
-    versao = (
-        db.query(VersaoValidacao)
-        .filter_by(validacao_id=validacao_id)
-        .order_by(VersaoValidacao.id.desc())
-        .first()
-    )
+def executar_validacoes_somente_destino(validacao_ids: list[int], db: Session):
+    resultados = []
 
-    if not versao:
-        raise Exception("Versão de validação não encontrada")
+    for validacao_id in validacao_ids:
+        versao = (
+            db.query(VersaoValidacao)
+            .filter_by(validacao_id=validacao_id)
+            .order_by(VersaoValidacao.id.desc())
+            .first()
+        )
 
-    conexao_destino = db.query(Conexao).get(versao.conexao_destino_id)
+        if not versao:
+            resultados.append({
+                "validacao_id": validacao_id,
+                "erro": "Versão de validação não encontrada"
+            })
+            continue
 
-    if not conexao_destino:
-        raise Exception("Conexão de destino inválida")
+        conexao_destino = db.query(Conexao).get(versao.conexao_destino_id)
 
-    engine_destino = get_engine_by_conexao(conexao_destino)
+        if not conexao_destino:
+            resultados.append({
+                "validacao_id": validacao_id,
+                "erro": "Conexão de destino inválida"
+            })
+            continue
 
-    with engine_destino.connect() as conn_destino:
-        result_destino = conn_destino.execute(text(versao.sql_destino)).fetchall()
+        engine_destino = get_engine_by_conexao(conexao_destino)
 
-        return {
-            "resultado_destino": [dict(row._mapping) for row in result_destino]
-        }
+        with engine_destino.connect() as conn_destino:
+            result_destino = conn_destino.execute(text(versao.sql_destino)).fetchall()
+
+            resultados.append({
+                "validacao_id": validacao_id,
+                "resultado_destino": [dict(row._mapping) for row in result_destino]
+            })
+
+    return resultados
+
