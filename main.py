@@ -8,7 +8,11 @@ from controller import (
 from database import Base, engine
 
 app = FastAPI()
-Base.metadata.create_all(bind=engine)
+
+@app.on_event("startup")
+async def on_startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 # Rotas
 app.include_router(projeto_controller.router)

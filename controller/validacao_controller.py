@@ -1,8 +1,18 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from database import get_db  # importa o nome correto da dependência
 from typing import List
+from sqlalchemy.ext.asyncio import create_async_engine
 from models.conexao_model import Conexao
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
+from fastapi import APIRouter, Depends, Query, HTTPException
+
+import logging
+import traceback
+
 from schemas.validacao_schema import ValidacaoCreate, ValidacaoResponse
 from service.validacao_service import (
     criar_validacao_com_versao,
@@ -13,6 +23,9 @@ from service.validacao_service import (
 )
 
 router = APIRouter(prefix="/validacoes", tags=["Validações"])
+
+def get_async_engine_by_conexao(conexao: Conexao):
+    return create_async_engine(conexao.url_conexao, echo=True, future=True)
 
 @router.post("/add", response_model=ValidacaoResponse)
 def post_validacao(data: ValidacaoCreate, db: Session = Depends(get_db)):
@@ -47,16 +60,19 @@ def executar_validacao_endpoint(validacao_id: int, db: Session = Depends(get_db)
         raise HTTPException(status_code=400, detail=str(e))
 
 
+from fastapi import Query
+
 @router.get("/executar-destino")
-def executar_validacoes_somente_endpoint(
-    validacao_ids: List[int] = Query(..., description="IDs das validações a executar"),
-    db: Session = Depends(get_db)
+async def executar_validacoes_endpoint(
+    validacao_ids: list[int] = Query(...),
+    db: AsyncSession = Depends(get_db)
 ):
-    """
-    Executa validações apenas no destino para múltiplos IDs.
-    """
     try:
-        resultado = executar_validacoes_somente_destino(validacao_ids, db)
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        resultados = await executar_validacoes_somente_destino(validacao_ids, db)
+        return resultados
+    except Exception:
+        import logging, traceback
+        logging.error("Erro executando validações:\n" + traceback.format_exc())
+        raise HTTPException(status_code=400, detail="Erro interno ao executar validações")
+
+        

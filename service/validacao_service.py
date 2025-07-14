@@ -2,11 +2,32 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from sqlalchemy import create_engine
 
+import logging
+import traceback
+
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+
+from sqlalchemy import bindparam
+
+from sqlalchemy import text, bindparam
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
 from typing import List
 from models.validacao_model import Validacao
 from models.versao_validacao_model import VersaoValidacao
 from models.conexao_model import Conexao
 from schemas.validacao_schema import ValidacaoCreate
+from database import get_db
+
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy import text, select
+from sqlalchemy.future import select
+
+def get_async_engine_by_conexao(conexao: Conexao):
+    return create_async_engine(conexao.url_conexao, echo=True, future=True)
 
 
 def get_engine_by_conexao(conexao: Conexao):
@@ -80,17 +101,28 @@ def executar_validacao(validacao_id: int, db: Session):
         }
 
 
-def executar_validacoes_somente_destino(validacao_ids: list[int], db: Session):
+
+
+async def executar_validacoes_somente_destino(validacao_ids: list[int], db: AsyncSession):
     resultados = []
 
-    for validacao_id in validacao_ids:
-        versao = (
-            db.query(VersaoValidacao)
-            .filter_by(validacao_id=validacao_id)
-            .order_by(VersaoValidacao.id.desc())
-            .first()
-        )
+    # Query para pegar versões usando IN com expanding=True
+    query = text(
+        "SELECT * FROM versoes_validacao WHERE validacao_id IN :vids ORDER BY id DESC"
+    ).bindparams(bindparam("vids", expanding=True))
 
+    result = await db.execute(query, {"vids": validacao_ids})
+    versoes = result.fetchall()
+
+    # Indexa a versão mais recente por validacao_id
+    versoes_por_id = {}
+    for versao in versoes:
+        vid = versao._mapping["validacao_id"]
+        if vid not in versoes_por_id:
+            versoes_por_id[vid] = versao
+
+    for validacao_id in validacao_ids:
+        versao = versoes_por_id.get(validacao_id)
         if not versao:
             resultados.append({
                 "validacao_id": validacao_id,
@@ -98,8 +130,7 @@ def executar_validacoes_somente_destino(validacao_ids: list[int], db: Session):
             })
             continue
 
-        conexao_destino = db.query(Conexao).get(versao.conexao_destino_id)
-
+        conexao_destino = await db.get(Conexao, versao._mapping["conexao_destino_id"])
         if not conexao_destino:
             resultados.append({
                 "validacao_id": validacao_id,
@@ -107,15 +138,21 @@ def executar_validacoes_somente_destino(validacao_ids: list[int], db: Session):
             })
             continue
 
-        engine_destino = get_engine_by_conexao(conexao_destino)
-
-        with engine_destino.connect() as conn_destino:
-            result_destino = conn_destino.execute(text(versao.sql_destino)).fetchall()
-
+        # Verifica se URL do destino tem driver asyncpg
+        if "asyncpg" not in conexao_destino.url_conexao:
             resultados.append({
                 "validacao_id": validacao_id,
-                "resultado_destino": [dict(row._mapping) for row in result_destino]
+                "erro": f"URL da conexão destino não está usando driver asyncpg: {conexao_destino.url_conexao}"
+            })
+            continue
+
+        engine_destino = create_async_engine(conexao_destino.url_conexao, future=True)
+        async with engine_destino.connect() as conn_destino:
+            result_destino = await conn_destino.execute(text(versao._mapping["sql_destino"]))
+            rows = result_destino.fetchall()  # SEM await aqui
+            resultados.append({
+                "validacao_id": validacao_id,
+                "resultado_destino": [dict(row._mapping) for row in rows]
             })
 
     return resultados
-
