@@ -82,6 +82,7 @@ def executar_validacao(validacao_id: int, db: Session):
 
 def executar_validacoes_somente_destino(validacao_ids: list[int], db: Session):
     resultados = []
+    print("Entrou na função")
 
     for validacao_id in validacao_ids:
         versao = (
