@@ -1,8 +1,19 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
+from sqlalchemy import create_engine
+
 from models.validacao_model import Validacao
 from models.versao_validacao_model import VersaoValidacao
+from models.conexao_model import Conexao
 from schemas.validacao_schema import ValidacaoCreate
-from sqlalchemy.sql import text
+
+
+def get_engine_by_conexao(conexao: Conexao):
+    """
+    Cria e retorna um SQLAlchemy engine baseado na url de conexão.
+    Exemplo de url: "postgresql://user:password@host:port/dbname"
+    """
+    return create_engine(conexao.url_conexao)
 
 
 def criar_validacao_com_versao(db: Session, data: ValidacaoCreate):
@@ -12,7 +23,7 @@ def criar_validacao_com_versao(db: Session, data: ValidacaoCreate):
         projeto_id=data.projeto_id
     )
     db.add(nova_validacao)
-    db.flush()  # pega o ID gerado
+    db.flush()  # para pegar o ID gerado
 
     versao = VersaoValidacao(
         validacao_id=nova_validacao.id,
@@ -26,16 +37,22 @@ def criar_validacao_com_versao(db: Session, data: ValidacaoCreate):
     db.refresh(nova_validacao)
     return nova_validacao
 
+
 def listar_validacoes_por_projeto(db: Session, projeto_id: int):
     return db.query(Validacao).filter(Validacao.projeto_id == projeto_id).all()
+
 
 def buscar_validacao_por_id(db: Session, validacao_id: int):
     return db.query(Validacao).filter(Validacao.id == validacao_id).first()
 
 
-
 def executar_validacao(validacao_id: int, db: Session):
-    versao = db.query(VersaoValidacao).filter_by(validacao_id=validacao_id).order_by(VersaoValidacao.id.desc()).first()
+    versao = (
+        db.query(VersaoValidacao)
+        .filter_by(validacao_id=validacao_id)
+        .order_by(VersaoValidacao.id.desc())
+        .first()
+    )
 
     if not versao:
         raise Exception("Versão de validação não encontrada")
@@ -53,14 +70,14 @@ def executar_validacao(validacao_id: int, db: Session):
         result_origem = conn_origem.execute(text(versao.sql_origem)).fetchall()
         result_destino = conn_destino.execute(text(versao.sql_destino)).fetchall()
 
-        # Opcional: comparar os resultados
         iguais = result_origem == result_destino
 
         return {
-            "resultado_origem": [dict(row) for row in result_origem],
-            "resultado_destino": [dict(row) for row in result_destino],
+            "resultado_origem": [dict(row._mapping) for row in result_origem],
+            "resultado_destino": [dict(row._mapping) for row in result_destino],
             "iguais": iguais
         }
+
 
 def executar_validacao_somente_destino(validacao_id: int, db: Session):
     versao = (
@@ -73,7 +90,7 @@ def executar_validacao_somente_destino(validacao_id: int, db: Session):
     if not versao:
         raise Exception("Versão de validação não encontrada")
 
-    conexao_destino = db.get(Conexao, versao.conexao_destino_id)
+    conexao_destino = db.query(Conexao).get(versao.conexao_destino_id)
 
     if not conexao_destino:
         raise Exception("Conexão de destino inválida")
@@ -86,4 +103,3 @@ def executar_validacao_somente_destino(validacao_id: int, db: Session):
         return {
             "resultado_destino": [dict(row._mapping) for row in result_destino]
         }
-
