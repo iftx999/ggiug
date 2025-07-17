@@ -6,6 +6,8 @@ from typing import List
 from models.validacao_model import Validacao
 from models.versao_validacao_model import VersaoValidacao
 from models.conexao_model import Conexao
+from fastapi import HTTPException
+import sqlparse
 from schemas.validacao_schema import ValidacaoCreate
 
 
@@ -120,3 +122,22 @@ def executar_validacoes_somente_destino(validacao_ids: list[int], db: Session):
 
     return resultados
 
+
+ 
+def executar_sql_com_conexao(url_conexao: str, sql: str):
+    sql_stripped = sql.strip().lower()
+    parsed = sqlparse.parse(sql)
+    statement = parsed[0]
+
+    if statement.get_type() != "SELECT":
+        raise HTTPException(status_code=400, detail="Apenas consultas SELECT são permitidas.")
+
+    resultados = []
+    try:
+        engine = create_engine(url_conexao)
+        with engine.connect() as conn:
+            result = conn.execute(text(sql)).fetchall()
+            resultados = [dict(row._mapping) for row in result]
+        return {"resultado": resultados}
+    except Exception as e:
+        return {"erro": str(e)}
