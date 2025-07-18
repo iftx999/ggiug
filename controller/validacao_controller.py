@@ -80,5 +80,4 @@ def executar_sql_endpoint(request: ExecucaoRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-
     
