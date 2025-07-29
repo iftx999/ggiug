@@ -14,3 +14,6 @@ def listar_conexoes_por_projeto(db: Session, projeto_id: int):
 
 def buscar_conexao_por_id(db: Session, conexao_id: int):
     return db.query(Conexao).filter(Conexao.id == conexao_id).first()
+
+def listar_conexoes(db: Session):
+    return db.query(Conexao).all()

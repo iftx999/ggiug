@@ -141,3 +141,20 @@ def executar_sql_com_conexao(url_conexao: str, sql: str):
         return {"resultado": resultados}
     except Exception as e:
         return {"erro": str(e)}
+    
+
+from sqlalchemy.orm import Session
+
+def validar_fatura_por_ligacao(id_ligacao: int, id_conexao: int, db: Session):
+    sql = text("SELECT id ,valor, datavencimento  FROM fatura WHERE idligacao = :id_ligacao AND idfaturasituacao = 2")
+    params = {"id_ligacao": id_ligacao}
+    
+    conexao = db.query(Conexao).filter_by(id=id_conexao).first()
+    if not conexao:
+        return {"erro": "Conexão não encontrada"}
+    
+    engine = get_engine_by_conexao(conexao)
+    with engine.connect() as conn:
+        resultado = conn.execute(sql, params).fetchall()
+        return [dict(row._mapping) for row in resultado]
+

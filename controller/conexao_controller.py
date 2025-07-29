@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas.conexao_schema import ConexaoCreate, ConexaoResponse
 from service.conexao_service import criar_conexao, listar_conexoes_por_projeto
+from models.conexao_model import Conexao
 
 router = APIRouter(prefix="/conexoes", tags=["Conexões"])
 
@@ -13,3 +14,7 @@ def post_conexao(conexao: ConexaoCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[ConexaoResponse])
 def get_conexoes(projeto_id: int = Query(...), db: Session = Depends(get_db)):
     return listar_conexoes_por_projeto(db, projeto_id)
+
+@router.get("/list")
+def listar_conexoes(db: Session = Depends(get_db)):
+    return db.query(Conexao).all()
