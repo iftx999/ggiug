@@ -146,7 +146,10 @@ def executar_sql_com_conexao(url_conexao: str, sql: str):
 from sqlalchemy.orm import Session
 
 def validar_fatura_por_ligacao(id_ligacao: int, id_conexao: int, db: Session):
-    sql = text("SELECT id ,valor, datavencimento  FROM fatura WHERE idligacao = :id_ligacao AND idfaturasituacao = 2")
+    sql = text("SELECT f.id ,f.valor, f.datavencimento  FROM fatura f "
+"join ligacao l on (l.id = f.idligacao ) "
+"join medicaodetalhe mdt on (mdt.idligacao = l.id) "
+"WHERE f.idligacao = :id_ligacao AND idfaturasituacao = 1 and mdt.retornadocoletor = 'S'")
     params = {"id_ligacao": id_ligacao}
     
     conexao = db.query(Conexao).filter_by(id=id_conexao).first()
