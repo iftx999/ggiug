@@ -17,4 +17,6 @@ def get_conexoes(projeto_id: int = Query(...), db: Session = Depends(get_db)):
 
 @router.get("/list")
 def listar_conexoes(db: Session = Depends(get_db)):
-    return db.query(Conexao).all()
+    resultados = db.query(Conexao).all()
+    print("RESULTADOS:", resultados)  # <-- aqui vai mostrar no console do Python
+    return resultados

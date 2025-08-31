@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Substitua pela sua URL real do banco PostgreSQL
-DATABASE_URL = "postgresql+psycopg2://postgres:iftx159@localhost:5432/postgres"
+DATABASE_URL = "postgresql+psycopg2://ourinhos:.py8Y;Ld'bk2u*>D@34.67.188.220:5433/ourinhos"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -8,4 +8,4 @@ services:
     volumes:
       - .:/app
     environment:
-      - DATABASE_URL="postgresql+psycopg2://postgres:iftx159@localhost:5432/postgres"
+      - DATABASE_URL = "postgresql+psycopg2://ourinhos:.py8Y;Ld'bk2u*>D@34.67.188.220:5433/ourinhos"
