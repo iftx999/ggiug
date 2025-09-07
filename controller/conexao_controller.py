@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas.conexao_schema import ConexaoCreate, ConexaoResponse
-from service.conexao_service import criar_conexao, listar_conexoes_por_projeto
+from service.conexao_service import criar_conexao, listar_conexoes_por_projeto, listar_conexoes
 from models.conexao_model import Conexao
 
 router = APIRouter(prefix="/conexoes", tags=["Conexões"])
@@ -16,7 +16,6 @@ def get_conexoes(projeto_id: int = Query(...), db: Session = Depends(get_db)):
     return listar_conexoes_por_projeto(db, projeto_id)
 
 @router.get("/list")
-def listar_conexoes(db: Session = Depends(get_db)):
-    resultados = db.query(Conexao).all()
-    print("RESULTADOS:", resultados)  # <-- aqui vai mostrar no console do Python
-    return resultados
+def listar_conexoes_endpoint(db: Session = Depends(get_db)):
+    # Chama o método do service que retorna unidadeoperacional
+    return listar_conexoes(db)

@@ -9,6 +9,8 @@ from models.conexao_model import Conexao
 from fastapi import HTTPException
 import sqlparse
 from schemas.validacao_schema import ValidacaoCreate
+from models.unidadeoperaciona_model import UnidadeOperacional
+
 
 
 def get_engine_by_conexao(conexao: Conexao):
@@ -145,19 +147,25 @@ def executar_sql_com_conexao(url_conexao: str, sql: str):
 
 from sqlalchemy.orm import Session
 
-def validar_fatura_por_ligacao(id_ligacao: int, id_conexao: int, db: Session):
-    sql = text("SELECT f.id ,f.valor, f.datavencimento  FROM fatura f "
-"join ligacao l on (l.id = f.idligacao ) "
-"join medicaodetalhe mdt on (mdt.idligacao = l.id) "
-"WHERE f.idligacao = :id_ligacao AND idfaturasituacao = 1 and mdt.retornadocoletor = 'S'")
-    params = {"id_ligacao": id_ligacao}
-    
-    conexao = db.query(Conexao).filter_by(id=id_conexao).first()
-    if not conexao:
-        return {"erro": "Conexão não encontrada"}
-    
-    engine = get_engine_by_conexao(conexao)
-    with engine.connect() as conn:
-        resultado = conn.execute(sql, params).fetchall()
-        return [dict(row._mapping) for row in resultado]
+from sqlalchemy import text
 
+def validar_fatura_por_ligacao(id_ligacao: int, id_conexao: int, db: Session):
+   # Validação da unidade operacional
+    unidade = db.query(UnidadeOperacional).filter_by(id=id_conexao).first()
+    if not unidade:
+        return {"erro": "Unidade operacional não encontrada"}
+
+    # Query de faturas
+    sql = text("""
+        SELECT id, valor, datavencimento
+        FROM fatura
+        WHERE idligacao = :id_ligacao
+          AND idfaturasituacao = 2
+    """)
+    params = {"id_ligacao": id_ligacao}
+
+    # Executa a query direto na sessão atual
+    resultado = db.execute(sql, params).all()
+
+    # Converte para lista de dicionários
+    return [dict(row._mapping) for row in resultado]

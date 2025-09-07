@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from models.conexao_model import Conexao
 from schemas.conexao_schema import ConexaoCreate
+from sqlalchemy import text
+
 
 def criar_conexao(db: Session, conexao: ConexaoCreate):
     nova = Conexao(**conexao.dict())
@@ -15,20 +17,15 @@ def listar_conexoes_por_projeto(db: Session, projeto_id: int):
 def buscar_conexao_por_id(db: Session, conexao_id: int):
     return db.query(Conexao).filter(Conexao.id == conexao_id).first()
 
-import logging
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
 def listar_conexoes(db: Session):
-    # SQL puro para pegar tudo da tabela unidadeoperacional
-    sql = text("SELECT * FROM unidadeoperacional ")
+    # Consulta direta na tabela unidadeoperacional
+    sql = text("SELECT id, unidadeoperacional FROM unidadeoperacional")
     result = db.execute(sql).fetchall()
-    
-    # Debug: mostra o que veio do banco
-    print("RESULTADOS:", result)
-    
-    # Retorna como lista de dicionários
-    return [{"id": r[0], "unidadeoperacional": r[1]} for r in result]
+
+    # Debug
+    print(f"Linhas retornadas: {len(result)}")
+    for r in result:
+        print(r)
+
+    # Retorna lista de dicionários com id e nome
+    return [{"id": r[0], "nome": r[1]} for r in result]
