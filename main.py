@@ -4,7 +4,9 @@ from controller import (
     projeto_controller,
     conexao_controller,
     validacao_controller,
-    versao_validacao_controller
+    versao_validacao_controller,
+    medicao_controller
+
 )
 from database import Base, engine
 
@@ -28,4 +30,7 @@ app.include_router(projeto_controller.router)
 app.include_router(conexao_controller.router)
 app.include_router(validacao_controller.router)
 app.include_router(versao_validacao_controller.router)
+app.include_router(medicao_controller.router)
+
+
 
